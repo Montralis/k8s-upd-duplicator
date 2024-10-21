@@ -4,36 +4,48 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
-	// The address to receive data from (e.g., 127.0.0.1:9999)
-	sourceAddr := ":9999"
+	// Get the source port from the environment variable
+	sourcePort := os.Getenv("SOURCE_PORT")
+	if sourcePort == "" {
+		fmt.Println("SOURCE_PORT not set in environment")
+		os.Exit(1)
+	}
+	sourceAddr := ":" + sourcePort
 
-	// The addresses to forward the received data to
-	destAddr1 := ":8888"
-	destAddr2 := ":7777"
+	// Get the destination ports from the environment variable
+	destPortsStr := os.Getenv("DESTINATION_PORTS")
+	if destPortsStr == "" {
+		fmt.Println("DESTINATION_PORTS not set in environment")
+		os.Exit(1)
+	}
 
-	// Resolve the source and destination addresses
+	// Split the comma-separated destination ports (in format host:port)
+	destPorts := strings.Split(destPortsStr, ",")
+
+	fmt.Println(destPorts)
+	// Resolve the source address for receiving data
 	srcAddr, err := net.ResolveUDPAddr("udp", sourceAddr)
 	if err != nil {
 		fmt.Println("Error resolving source address:", err)
 		os.Exit(1)
 	}
 
-	dest1Addr, err := net.ResolveUDPAddr("udp", destAddr1)
-	if err != nil {
-		fmt.Println("Error resolving first destination address:", err)
-		os.Exit(1)
+	// Resolve the destination addresses
+	var destAddrs []*net.UDPAddr
+	for _, port := range destPorts {
+		addr, err := net.ResolveUDPAddr("udp", port)
+		if err != nil {
+			fmt.Println("Error resolving destination address:", err)
+			os.Exit(1)
+		}
+		destAddrs = append(destAddrs, addr)
 	}
 
-	dest2Addr, err := net.ResolveUDPAddr("udp", destAddr2)
-	if err != nil {
-		fmt.Println("Error resolving second destination address:", err)
-		os.Exit(1)
-	}
-
-	// UDP connection for receiving data
+	// Create a UDP connection to listen on the source port
 	conn, err := net.ListenUDP("udp", srcAddr)
 	if err != nil {
 		fmt.Println("Error starting UDP server:", err)
@@ -54,23 +66,17 @@ func main() {
 			continue
 		}
 
-		// Forward the received data to both destination ports
+		// Data to forward
 		data := buf[:n]
 
-		// Send to the first destination port (destAddr1)
-		err = sendData(dest1Addr, data)
-		if err != nil {
-			fmt.Println("Error sending to", destAddr1, ":", err)
-		} else {
-			fmt.Printf("Sent to %v: %s\n", destAddr1, string(data))
-		}
-
-		// Send to the second destination port (destAddr2)
-		err = sendData(dest2Addr, data)
-		if err != nil {
-			fmt.Println("Error sending to", destAddr2, ":", err)
-		} else {
-			fmt.Printf("Sent to %v: %s\n", destAddr2, string(data))
+		// Forward the received data to all destination addresses
+		for _, destAddr := range destAddrs {
+			err := sendData(destAddr, data)
+			if err != nil {
+				fmt.Println("Error sending to", destAddr, ":", err)
+			} else {
+				fmt.Printf("Sent to %v: %s\n", destAddr, string(data))
+			}
 		}
 
 		// Optional: Display the received data
@@ -78,7 +84,7 @@ func main() {
 	}
 }
 
-// Helper function to send data to the specified destination port
+// Helper function to send data to the specified destination address
 func sendData(addr *net.UDPAddr, data []byte) error {
 	conn, err := net.DialUDP("udp", nil, addr)
 	if err != nil {

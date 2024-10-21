@@ -1,0 +1,35 @@
+version: '3.8'
+
+networks:
+  my_network:  
+    driver: bridge
+
+services:
+  udp-forwarder:
+    build:
+      context: .
+    ports:
+      - "${SIMULATOR_PORT}:${SOURCE_PORT}/udp"
+    env_file:
+      - .env
+    environment:
+      SOURCE_PORT: ${SOURCE_PORT}
+      DESTINATION_PORTS: receiver1:1234,receiver2:1235
+    networks:
+      - my_network
+
+  receiver1:
+    image: alpine
+    expose:
+      - 1234/udp
+    command: ["sh", "-c", "sleep 1000"]
+    networks:
+      - my_network  
+
+  receiver2:
+    image: alpine
+    expose:
+      - 1235/udp
+    command: ["sh", "-c", "nc -luk 1235"]
+    networks:
+      - my_network  

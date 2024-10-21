@@ -1,0 +1,5 @@
+Connect to the container:
+docker compose exec -it CONTAINER sh
+
+See incoming data in the container:
+nc -lku -p 8888

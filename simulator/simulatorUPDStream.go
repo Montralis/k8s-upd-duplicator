@@ -1,63 +1,67 @@
 package main
 
 import (
-    "bufio"
-    "fmt"
-    "log"
-    "net"
-    "os"
+	"bufio"
+	"fmt"
+	"log"
+	"net"
+	"os"
+	"time"
 )
 
 func main() {
-    // Die Datei, aus der die Daten gelesen werden
-    filePath := "data.txt"
+	// Read sample data from a file
+	filePath := "data.txt"
 
-    // Zieladresse für den UDP-Stream (IP und Port)
-    serverAddr := "127.0.0.1:9999"
+	// Send data to localhost
+	serverAddr := "127.0.0.1:9199"
 
-    // Adresse parsen
-    addr, err := net.ResolveUDPAddr("udp", serverAddr)
-    if err != nil {
-        log.Fatalf("Fehler beim Parsen der Adresse: %v", err)
-    }
+	// Parse the address
+	addr, err := net.ResolveUDPAddr("udp", serverAddr)
+	if err != nil {
+		log.Fatalf("Error parsing the address: %v", err)
+	}
 
-    // UDP-Verbindung erstellen
-    conn, err := net.DialUDP("udp", nil, addr)
-    if err != nil {
-        log.Fatalf("Fehler beim Herstellen der UDP-Verbindung: %v", err)
-    }
-    defer conn.Close()
+	// Create a UDP connection
+	conn, err := net.DialUDP("udp", nil, addr)
+	if err != nil {
+		log.Fatalf("Error establishing the UDP connection: %v", err)
+	}
+	defer conn.Close()
 
-    for {
-        // Datei öffnen
-        file, err := os.Open(filePath)
-        if err != nil {
-            log.Fatalf("Fehler beim Öffnen der Datei: %v", err)
-        }
+	for {
+		// Open the file
+		file, err := os.Open(filePath)
+		if err != nil {
+			log.Fatalf("Error opening the file: %v", err)
+		}
 
-        // Datei zeilenweise lesen
-        scanner := bufio.NewScanner(file)
-        for scanner.Scan() {
-            line := scanner.Text()
+		// Read the file line by line
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			line := scanner.Text()
 
-            // Daten über den UDP-Stream senden
-            _, err := conn.Write([]byte(line))
-            if err != nil {
-                log.Printf("Fehler beim Senden der Daten: %v", err)
-                continue
-            }
+			// Send data over the UDP stream
+			_, err := conn.Write([]byte(line))
+			if err != nil {
+				log.Printf("Error sending data: %v", err)
+				continue
+			}
 
-            fmt.Printf("Gesendet: %s\n", line)
-        }
+			fmt.Printf("Sent: %s\n", line)
 
-        if err := scanner.Err(); err != nil {
-            log.Fatalf("Fehler beim Lesen der Datei: %v", err)
-        }
+			// Sleep for 500 milliseconds between lines
+			time.Sleep(500 * time.Millisecond)
+		}
 
-        // Datei schließen, bevor wir sie erneut öffnen
-        file.Close()
+		if err := scanner.Err(); err != nil {
+			log.Fatalf("Error reading the file: %v", err)
+		}
 
-        // Hinweis für den Benutzer, dass die Datei wiederholt wird
-        fmt.Println("Dateiende erreicht, wiederhole das Lesen von vorne.")
-    }
+		// Close the file before reopening it for the next loop
+		file.Close()
+
+		// Inform the user that the file will be read again
+		fmt.Println("File reached its end. Reading again ...")
+	}
 }
