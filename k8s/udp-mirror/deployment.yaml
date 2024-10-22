@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: udp-mirror
+  labels:
+    app.kubernetes.io/component: udp-mirror
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: udp-mirror
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: udp-mirror
+    spec:
+      containers:
+      - name: udp-mirror
+        image: k8s-udp-duplicator # image must be build and pushed to k8s in advanced 
+        ports:
+            - containerPort: 9999
+              protocol: UDP
+        env:
+          - name: SOURCE_PORT
+            value: "9999"
+          - name: DESTINATION_PORTS
+            value: "receiver1:1234,receiver2:1235"
